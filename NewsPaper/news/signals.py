@@ -6,27 +6,16 @@ from django.dispatch import receiver
 
 
 
-@receiver(m2m_changed, sender=PostCategory)
-def post_created(instance, **kwargs):
-    if not kwargs["action"] == 'post_add':
-        emails = User.objects.filter(
-            subscriptions__category__in=instance.postCategory.all()
-        ).values_list('email', flat=True)
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
-        subject = f'Новая запись в категории {instance.postCategory}'
 
-        text_content = (
-            f'Новость: {instance.heading}\n'
-            f'Текст: {instance.textPost}\n\n'
-            f'Ссылка на новость: http://127.0.0.1:8000{instance.get_absolute_url()}'
-        )
-        html_content = (
-            f'Новость: {instance.heading}<br>'
-            f'Текст: {instance.textPost}<br><br>'
-            f'<a href="http://127.0.0.1{instance.get_absolute_url()}">'
-            f'Ссылка на новость</a>'
-        )
-        for email in emails:
-            msg = EmailMultiAlternatives(subject, text_content, None, [email])
-            msg.attach_alternative(html_content, "text/html")
-            msg.send()
+from .models import Post
+from .views import send_mail_for_sub
+
+
+@receiver(post_save, sender=Post)
+def send_sub_mail(sender, instance, created, **kwargs):
+    print('Сигнал - начало')
+    send_mail_for_sub(instance)
+    print('Сигнал - конец')

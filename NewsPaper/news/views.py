@@ -1,6 +1,7 @@
 from .models import Post, Subscription, Category
 from .filters import PostFilter
 from .forms import PostForm
+from .tasks import send_mail_for_sub_once
 
 from django.views.generic import (
     ListView, DetailView, CreateView, UpdateView, DeleteView
@@ -11,6 +12,8 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Exists, OuterRef
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_protect
+from django.template.loader import render_to_string
+from django.shortcuts import redirect
 
 
 class NewsList(ListView):
@@ -77,6 +80,7 @@ class PostUpdate(PermissionRequiredMixin, UpdateView):
     template_name = 'post_edit.html'
     permission_required = ("news.change_post")
 
+
 class PostDelete(PermissionRequiredMixin, DeleteView):
     model = Post
     template_name = 'post_delete.html'
@@ -113,3 +117,49 @@ def subscriptions(request):
         'subscriptions.html',
         {'categories': categories_with_subscriptions},
     )
+
+def send_mail_for_sub(instance):
+    print('Представления - начало')
+    print()
+    print('====================ПРОВЕРКА СИГНАЛОВ===========================')
+    print()
+    print('задача - отправка письма подписчикам при добавлении новой статьи')
+
+    sub_text = instance.textPost
+
+    category = Category.objects.get(pk=Post.objects.get(pk=instance.pk).postCategory.pk)
+    print()
+    print('category:', category)
+    print()
+    subscribers = category.subscribers.all()
+
+
+    print('Адреса рассылки:')
+    for pos in subscribers:
+        print(pos.email)
+
+    print()
+    print()
+    print()
+    for subscriber in subscribers:
+
+        print('**********************', subscriber.email, '**********************')
+        print(subscriber)
+        print('Адресат:', subscriber.email)
+
+        html_content = render_to_string(
+            'mail.html', {'user': subscriber, 'text': sub_text[:50], 'post': instance})
+
+        sub_username = subscriber.username
+        sub_useremail = subscriber.email
+
+        print()
+        print(html_content)
+        print()
+
+        send_mail_for_sub_once.delay(sub_username, sub_useremail, html_content)
+
+
+    print('Представления - конец')
+
+    return redirect('/news/')

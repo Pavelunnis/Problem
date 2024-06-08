@@ -27,7 +27,6 @@ class Category(models.Model):
         return self.category
 
 
-
 class Post(models.Model):
     autor = models.ForeignKey(Author, on_delete=models.CASCADE)
     news = 'NW'
@@ -62,6 +61,8 @@ class Post(models.Model):
 class PostCategory(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE)
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
+
+
 
 
 class Comment(models.Model):
